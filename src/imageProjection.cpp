@@ -30,6 +30,20 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(OusterPointXYZIRT,
     (uint8_t, ring, ring) (uint16_t, noise, noise) (uint32_t, range, range)
 )
 
+struct LivoxPointXYZIRT
+{
+    PCL_ADD_POINT4D
+    PCL_ADD_INTENSITY;
+    uint8_t tag;
+    uint8_t line;
+    double timestamp;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+} EIGEN_ALIGN16;
+POINT_CLOUD_REGISTER_POINT_STRUCT (LivoxPointXYZIRT,
+    (float, x, x) (float, y, y) (float, z, z) (float, intensity, intensity) (uint8_t, tag, tag)
+    (uint8_t, line, line) (double, timestamp, timestamp)
+)
+
 // Use the Velodyne point format as a common representation
 using PointXYZIRT = VelodynePointXYZIRT;
 
@@ -71,6 +85,7 @@ private:
 
     pcl::PointCloud<PointXYZIRT>::Ptr laserCloudIn;
     pcl::PointCloud<OusterPointXYZIRT>::Ptr tmpOusterCloudIn;
+    pcl::PointCloud<LivoxPointXYZIRT>::Ptr tmpLivoxMid360CloudIn;
     pcl::PointCloud<PointType>::Ptr   fullCloud;
     pcl::PointCloud<PointType>::Ptr   extractedCloud;
 
@@ -137,6 +152,7 @@ public:
     {
         laserCloudIn.reset(new pcl::PointCloud<PointXYZIRT>());
         tmpOusterCloudIn.reset(new pcl::PointCloud<OusterPointXYZIRT>());
+        tmpLivoxMid360CloudIn.reset(new pcl::PointCloud<LivoxPointXYZIRT>());
         fullCloud.reset(new pcl::PointCloud<PointType>());
         extractedCloud.reset(new pcl::PointCloud<PointType>());
 
@@ -233,7 +249,7 @@ public:
         cloudQueue.pop_front();
         if (sensor == SensorType::VELODYNE || sensor == SensorType::LIVOX)
         {
-            pcl::moveFromROSMsg(currentCloudMsg, *laserCloudIn);  
+            pcl::moveFromROSMsg(currentCloudMsg, *laserCloudIn);
         }
         else if (sensor == SensorType::OUSTER)
         {
@@ -253,6 +269,28 @@ public:
                 dst.time = src.t * 1e-9f;
             }
         }
+        else if (sensor == SensorType::MID360)
+        {
+            // Convert to Velodyne format
+            pcl::moveFromROSMsg(currentCloudMsg, *tmpLivoxMid360CloudIn);
+            
+            double msgTime = stamp2Sec(currentCloudMsg.header.stamp);
+
+            laserCloudIn->points.resize(tmpLivoxMid360CloudIn->size());
+            laserCloudIn->is_dense = tmpLivoxMid360CloudIn->is_dense;
+            double initTime = tmpLivoxMid360CloudIn->points[0].timestamp * 1e-9f;
+            for (size_t i = 0; i < tmpLivoxMid360CloudIn->size(); i++)
+            {
+                auto &src = tmpLivoxMid360CloudIn->points[i];
+                auto &dst = laserCloudIn->points[i];
+                dst.x = src.x;
+                dst.y = src.y;
+                dst.z = src.z;
+                dst.intensity = src.intensity;
+                dst.ring = src.line;
+                dst.time = src.timestamp * 1e-9f - initTime;
+            }
+        }
         else
         {
             RCLCPP_ERROR_STREAM(get_logger(), "Unknown sensor type: " << int(sensor));
@@ -263,7 +301,7 @@ public:
         cloudHeader = currentCloudMsg.header;
         timeScanCur = stamp2Sec(cloudHeader.stamp);
         timeScanEnd = timeScanCur + laserCloudIn->points.back().time;
-    
+
         // remove Nan
         vector<int> indices;
         pcl::removeNaNFromPointCloud(*laserCloudIn, *laserCloudIn, indices);
@@ -282,7 +320,7 @@ public:
             ringFlag = -1;
             for (int i = 0; i < (int)currentCloudMsg.fields.size(); ++i)
             {
-                if (currentCloudMsg.fields[i].name == "ring")
+                if (currentCloudMsg.fields[i].name == "ring" || currentCloudMsg.fields[i].name == "line")
                 {
                     ringFlag = 1;
                     break;
@@ -290,11 +328,11 @@ public:
             }
             if (ringFlag == -1)
             {
-                if (sensor == SensorType::VELODYNE) {
+if (sensor == SensorType::VELODYNE) {
                     ringFlag = 2;
                 } else {
-                    RCLCPP_ERROR(get_logger(), "Point cloud ring channel not available, please configure your point cloud data!");
-                    rclcpp::shutdown();
+                RCLCPP_ERROR(get_logger(), "Point cloud ring channel not available, please configure your point cloud data!");
+                rclcpp::shutdown();
                 }
             }
         }
@@ -305,7 +343,7 @@ public:
             deskewFlag = -1;
             for (auto &field : currentCloudMsg.fields)
             {
-                if (field.name == "time" || field.name == "t")
+                if (field.name == "time" || field.name == "t" || field.name == "timestamp")
                 {
                     deskewFlag = 1;
                     break;
@@ -327,7 +365,7 @@ public:
         if (imuQueue.empty() ||
             stamp2Sec(imuQueue.front().header.stamp) > timeScanCur ||
             stamp2Sec(imuQueue.back().header.stamp) < timeScanEnd)
-        {
+        {   
             RCLCPP_INFO(get_logger(), "Waiting for IMU data ...");
             return false;
         }
@@ -571,7 +609,7 @@ public:
                 continue;
 
             int rowIdn = laserCloudIn->points[i].ring;
-            // if sensor is a velodyne (ringFlag = 2) calculate rowIdn based on number of scans
+// if sensor is a velodyne (ringFlag = 2) calculate rowIdn based on number of scans
             if (ringFlag == 2) { 
                 float verticalAngle =
                     atan2(thisPoint.z,
@@ -587,13 +625,14 @@ public:
                 continue;
 
             int columnIdn = -1;
-            if (sensor == SensorType::VELODYNE || sensor == SensorType::OUSTER)
+            if (sensor == SensorType::VELODYNE || sensor == SensorType::OUSTER
+                || sensor == SensorType::MID360)
             {
-                float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
-                static float ang_res_x = 360.0/float(Horizon_SCAN);
-                columnIdn = -round((horizonAngle-90.0)/ang_res_x) + Horizon_SCAN/2;
-                if (columnIdn >= Horizon_SCAN)
-                    columnIdn -= Horizon_SCAN;
+            float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
+            static float ang_res_x = 360.0/float(Horizon_SCAN);
+            columnIdn = -round((horizonAngle-90.0)/ang_res_x) + Horizon_SCAN/2;
+            if (columnIdn >= Horizon_SCAN)
+                columnIdn -= Horizon_SCAN;
             }
             else if (sensor == SensorType::LIVOX)
             {
