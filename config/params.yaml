@@ -2,13 +2,13 @@
   ros__parameters:
 
     # Topics
-    pointCloudTopic: "/points"                   # Point cloud data
-    imuTopic: "/imu/data"                        # IMU data
+    pointCloudTopic: "/livox/lidar"              # Point cloud data
+    imuTopic: "/imu_sensor_node/imu"             # IMU data
     odomTopic: "odometry/imu"                    # IMU pre-preintegration odometry, same frequency as IMU
     gpsTopic: "odometry/gpsz"                    # GPS odometry topic from navsat, see module_navsat.launch file
 
     # Frames
-    lidarFrame: "lidar_link"
+    lidarFrame: "livox_frame"
     baselinkFrame: "base_link"
     odometryFrame: "odom"
     mapFrame: "map"
@@ -24,29 +24,29 @@
     savePCDDirectory: "/Downloads/LOAM/"         # in your home folder, starts and ends with "/". Warning: the code deletes "LOAM" folder then recreates it. See "mapOptimization" for implementation
 
     # Sensor Settings
-    sensor: ouster                               # lidar sensor type, either 'velodyne', 'ouster' or 'livox'
-    N_SCAN: 64                                   # number of lidar channels (i.e., Velodyne/Ouster: 16, 32, 64, 128, Livox Horizon: 6)
-    Horizon_SCAN: 512                            # lidar horizontal resolution (Velodyne:1800, Ouster:512,1024,2048, Livox Horizon: 4000)
+    sensor: mid360                               # lidar sensor type, either 'velodyne', 'ouster', 'livox' or 'mid360'
+    N_SCAN: 4                                   # number of lidar channels (i.e., Velodyne/Ouster: 16, 32, 64, 128, Livox Horizon: 6, Livox Mid360: 4)
+    Horizon_SCAN: 4000                            # lidar horizontal resolution (Velodyne:1800, Ouster:512,1024,2048, Livox Horizon: 4000, Livox Mid360: 4000)
     downsampleRate: 1                            # default: 1. Downsample your data if too many
     # points. i.e., 16 = 64 / 4, 16 = 16 / 1
-    lidarMinRange: 1.0                           # default: 1.0, minimum lidar range to be used
-    lidarMaxRange: 1000.0                        # default: 1000.0, maximum lidar range to be used
+    lidarMinRange: 0.2                           # default: 1.0, minimum lidar range to be used. 0.2 for livox
+    lidarMaxRange: 40.0                        # default: 1000.0, maximum lidar range to be used, 40.0 for livox
 
     # IMU Settings
-    imuAccNoise: 3.9939570888238808e-03
-    imuGyrNoise: 1.5636343949698187e-03
-    imuAccBiasN: 6.4356659353532566e-05
-    imuGyrBiasN: 3.5640318696367613e-05
+    imuAccNoise: 7.06677778593071118e-03
+    imuGyrNoise: 1.6497706865488363e-03
+    imuAccBiasN: 1.2309371661780921e-04
+    imuGyrBiasN: 9.5907627209493020e-06
 
     imuGravity: 9.80511
     imuRPYWeight: 0.01
 
-    extrinsicTrans:  [ 0.0,  0.0,  0.0 ]
-    extrinsicRot:    [-1.0,  0.0,  0.0,
-                       0.0,  1.0,  0.0,
-                       0.0,  0.0, -1.0 ]
-    extrinsicRPY: [ 0.0,  1.0,  0.0,
-                   -1.0,  0.0,  0.0,
+    extrinsicTrans:  [ 0.06,  0.0,  -0.02 ]
+    extrinsicRot:    [ -1.0,  0.0,  0.0,
+                       0.0,  -1.0,  0.0,
+                       0.0,  0.0,  1.0 ]
+    extrinsicRPY: [ -1.0,  0.0,  0.0,
+                    0.0,  -1.0,  0.0,
                     0.0,  0.0,  1.0 ]
 
     # LOAM feature threshold
@@ -56,9 +56,9 @@
     surfFeatureMinValidNum: 100
 
     # voxel filter paprams
-    odometrySurfLeafSize: 0.4                     # default: 0.4 - outdoor, 0.2 - indoor
-    mappingCornerLeafSize: 0.2                    # default: 0.2 - outdoor, 0.1 - indoor
-    mappingSurfLeafSize: 0.4                      # default: 0.4 - outdoor, 0.2 - indoor
+    odometrySurfLeafSize: 0.2                     # default: 0.4 - outdoor, 0.2 - indoor
+    mappingCornerLeafSize: 0.1                    # default: 0.2 - outdoor, 0.1 - indoor
+    mappingSurfLeafSize: 0.2                      # default: 0.4 - outdoor, 0.2 - indoor
 
     # robot motion constraint (in case you are using a 2D robot)
     z_tollerance: 1000.0                          # meters
