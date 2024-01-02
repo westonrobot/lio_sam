@@ -30,7 +30,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(OusterPointXYZIRT,
     (uint8_t, ring, ring) (uint16_t, noise, noise) (uint32_t, range, range)
 )
 
-struct LivoxPointXYZIRT
+struct Mid360PointXYZIRT
 {
     PCL_ADD_POINT4D
     PCL_ADD_INTENSITY;
@@ -39,7 +39,7 @@ struct LivoxPointXYZIRT
     double timestamp;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 } EIGEN_ALIGN16;
-POINT_CLOUD_REGISTER_POINT_STRUCT (LivoxPointXYZIRT,
+POINT_CLOUD_REGISTER_POINT_STRUCT (Mid360PointXYZIRT,
     (float, x, x) (float, y, y) (float, z, z) (float, intensity, intensity) (uint8_t, tag, tag)
     (uint8_t, line, line) (double, timestamp, timestamp)
 )
@@ -85,7 +85,7 @@ private:
 
     pcl::PointCloud<PointXYZIRT>::Ptr laserCloudIn;
     pcl::PointCloud<OusterPointXYZIRT>::Ptr tmpOusterCloudIn;
-    pcl::PointCloud<LivoxPointXYZIRT>::Ptr tmpLivoxMid360CloudIn;
+    pcl::PointCloud<Mid360PointXYZIRT>::Ptr tmpLivoxMid360CloudIn;
     pcl::PointCloud<PointType>::Ptr   fullCloud;
     pcl::PointCloud<PointType>::Ptr   extractedCloud;
 
@@ -152,7 +152,7 @@ public:
     {
         laserCloudIn.reset(new pcl::PointCloud<PointXYZIRT>());
         tmpOusterCloudIn.reset(new pcl::PointCloud<OusterPointXYZIRT>());
-        tmpLivoxMid360CloudIn.reset(new pcl::PointCloud<LivoxPointXYZIRT>());
+        tmpLivoxMid360CloudIn.reset(new pcl::PointCloud<Mid360PointXYZIRT>());
         fullCloud.reset(new pcl::PointCloud<PointType>());
         extractedCloud.reset(new pcl::PointCloud<PointType>());
 

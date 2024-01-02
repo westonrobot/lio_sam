@@ -87,7 +87,19 @@ public:
     void calculateSmoothness()
     {
         int cloudSize = extractedCloud->points.size();
-        for (int i = 5; i < cloudSize - 5; i++)
+        int diffRangeStartIdx = 5;
+        switch (sensor) {
+          case SensorType::MID360:
+            diffRangeStartIdx = 2;
+            break;
+          case SensorType::VELODYNE:
+          case SensorType::OUSTER:
+          case SensorType::LIVOX:
+            diffRangeStartIdx = 5;
+            break;
+        }
+
+        for (int i = diffRangeStartIdx; i < cloudSize - diffRangeStartIdx; i++)
         {   
             float diffRange = 0.0;
 
